@@ -66,9 +66,10 @@ class UserList(npyscreen.MultiLineAction):
     def display_value(self,v1):
         return "[%s] %s" % (v1.id, v1.email)
 
-    def when_add_record(self, act_on_this, keypress):
-        pass
-    def when_delete_record(self, act_on_this, keypress):
+    def when_add_record(self, *args, **keywords):
+        self.parent.parentApp.switchForm('USERFORM')
+
+    def when_delete_record(self,*args, **keywords):
         npyscreen.notify_yes_no("Do you want to delete [%s]" %
                 self.values[self.cursor_line].name, title="Warning!",
                 form_color="DANGER")

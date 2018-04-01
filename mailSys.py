@@ -4,7 +4,7 @@ import npyscreen
 import CustomWidgets
 from pony.orm import *
 from sql import *
-import code
+import curses
 
 class emailMain(npyscreen.FormBaseNew):
     def afterEditing(self):
@@ -16,23 +16,34 @@ class emailMain(npyscreen.FormBaseNew):
                 values = ['Manage Domains', 'Manage Users', 'Quit'],
                 relx = 6)
 
-class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionForm):
+class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
+    user = None
     def afterEditing(self):
         self.parentApp.setNextFormPrevious()
-    def beforeEditing(self):
-        pass
-    #Need to Pull SQL info here for user
 
     def create(self):
-       self.value=None
-       self.myTitle        = self.add(npyscreen.TitleText, name='User Email:', editable=False)
-       self.myDomain       = self.add(npyscreen.TitleText, name='Domain:', color= 'CAUTIONHL',
-               labelColor='CAUTION', value='test', editable=False)
+       self.info = u''
+       if self.__class__.user:
+           pass
+           #sql shennangins here
+       else:
+           self.value = None
+
+       self.myTitle        = self.add(npyscreen.TitleText, name = u'Local-Part:')
+       self.myDomain       = self.add(npyscreen.TitleText, name = 'Domain:', color = 'CAUTIONHL',
+               labelColor='CAUTION')
+       self.myPassword     = self.add(npyscreen.TitleText, name = 'Password:')
+       self.myDomain.add_handlers({
+           curses.ascii.NL: self.test,
+           " ": self.test})
        self.myEmail        = self.add(npyscreen.TitleMultiLine,
-               scroll_exit=True, max_height=3, name='Configure:',
-               values = self.value, rely=5)
+               scroll_exit = True, max_height=3, name='Configure:',
+               values = self.value, rely=6)
+
     def on_cancel(self):
 	self.parentApp.setNextFormPrevious()
+    def test(self, *args, **keywords):
+        raise Exception("We did it")
 class addDomainPopup(npyscreen.ActionPopup):
     def create(self):
         self.myDomain = self.add(npyscreen.TitleText,name="New Domain")
@@ -97,6 +108,7 @@ class EmailManager(npyscreen.NPSAppManaged):
        self.addForm('ADDDOMAIN', addDomainPopup, name='Add Domain')
        self.addForm("ALIASES", emailAliasPopup, name='Alias manager')
        self.addForm("USER", emailUser, name = 'User Manager')
+       self.addForm("USERFORM", emailUserForm, name = 'Edit User')
        # A real application might define more forms here.......
 
 if __name__ == '__main__':
