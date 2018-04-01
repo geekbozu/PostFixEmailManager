@@ -37,10 +37,13 @@ class DomainList(npyscreen.MultiLineAction):
     def __init__(self, *args, **keywords):
         super(DomainList, self).__init__(*args, **keywords)
         self.add_handlers({
+            #curses.ascii.NL: self.h_exit_down,
             "^A": self.when_add_record,
             "^D": self.when_delete_record})
+
     def display_value(self,v1):
         return "[%s] %s" % (v1.id, v1.name)
+
     def when_add_record(self, *args, **keywords):
         self.parent.parentApp.switchForm('ADDDOMAIN')
         pass
@@ -54,8 +57,14 @@ class DomainList(npyscreen.MultiLineAction):
             commit()
             self.values = self.parent.update_domains()
 
+    @db_session
     def actionHighlighted(self, act_on_this, keypress):
-        pass
+
+        self.value = self._last_cursor_line
+        #self.set_is_line_important(self._my_widgets[self._last_cursor_line],True)
+        self.update()
+
+
 
 class UserList(npyscreen.MultiLineAction):
     def __init__(self, *args, **keywords):
@@ -63,6 +72,7 @@ class UserList(npyscreen.MultiLineAction):
         self.add_handlers({
             "^A": self.when_add_record,
             "^D": self.when_delete_record})
+
     def display_value(self,v1):
         return "[%s] %s" % (v1.id, v1.email)
 
@@ -75,3 +85,15 @@ class UserList(npyscreen.MultiLineAction):
                 form_color="DANGER")
     def actionHighlighted(self, act_on_this, keypress):
         pass
+
+class goodForm(InfoForm,npyscreen.FormBaseNew):
+    def buttonpress(self):
+        self.parentApp.switchFormPrevious()
+    def create(self):
+        y, x = self.curses_pad.getmaxyx()
+        y -= 5
+        self.myList.max_height = y
+        self.button = self.add(npyscreen.MiniButtonPress, use_max_space= True,
+                when_pressed_function = self.buttonpress, name = "OK", rely = -3,
+                relx = -12, cursor_color="CURSOR_INVERSE")
+
