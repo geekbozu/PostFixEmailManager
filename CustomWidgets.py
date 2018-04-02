@@ -59,10 +59,11 @@ class DomainList(npyscreen.MultiLineAction):
 
     @db_session
     def actionHighlighted(self, act_on_this, keypress):
-
         self.value = self._last_cursor_line
         #self.set_is_line_important(self._my_widgets[self._last_cursor_line],True)
         self.update()
+        #import pdb; pdb.set_trace()
+
 
 
 
@@ -81,8 +82,9 @@ class UserList(npyscreen.MultiLineAction):
 
     def when_delete_record(self,*args, **keywords):
         npyscreen.notify_yes_no("Do you want to delete [%s]" %
-                self.values[self.cursor_line].name, title="Warning!",
+                self.values[self.cursor_line].email, title="Warning!",
                 form_color="DANGER")
+
     def actionHighlighted(self, act_on_this, keypress):
         pass
 

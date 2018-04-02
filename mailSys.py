@@ -5,7 +5,10 @@ import CustomWidgets
 from pony.orm import *
 from sql import *
 import curses
-
+import hashlib
+import base64
+import os
+import crypt
 class emailMain(npyscreen.FormBaseNew):
     def afterEditing(self):
 	pass
@@ -31,23 +34,47 @@ class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
        else:
            self.value = None
 
-       self.myTitle        = self.add(npyscreen.TitleText, name = u'Local-Part:')
+       self.myLocalPart        = self.add(npyscreen.TitleText, name = u'Local-Part:', value = '')
        self.myDomain       = self.add(npyscreen.TitleText, name = 'Domain:', color = 'CAUTIONHL',
                labelColor='CAUTION')
-       self.myPassword     = self.add(npyscreen.TitleText, name = 'Password:')
+       self.myPassword     = self.add(npyscreen.TitleText, name = 'Password:', value = '')
        self.myDomain.add_handlers({
            curses.ascii.NL: self.h_key_handle,
-                       " ": self.h_key_handle})
+           " ":             self.h_key_handle})
        self.myEmail        = self.add(npyscreen.TitleMultiLine,
                scroll_exit = True, max_height=3, name='Configure:',
                values = self.value, rely=6)
 
     def on_cancel(self):
+        self.myLocalPart.value = None
+        self.myDomain.value = None
+        self.myPassword.value  = None
 	self.parentApp.setNextFormPrevious()
 
+    @db_session
+    def on_ok(self):
+        if (self.myLocalPart.value != None) and (self.myDomain.value != None) and (self.myPassword.value != None):
+            email = self.myLocalPart.value + '@' + self.myDomain.value
+            password = self.myPassword.value #need to salt+hash this
+            sha = hashlib.sha512()
+            sha.update(password)
+            salt = base64.b64encode(os.urandom(12))
+            sha.update('$6$')
+            sha.update(salt)
+            #salt = base64.b64encode(salt)
+            password = base64.b64encode(sha.digest())
+            password = '$6${}${}'.format(salt,password)
+            try:
+                did = Virtual_domains.get(name=self.myDomain.value).id
+            except:
+                npyscreen.notify_wait("Invalid Domain","ERROR")
+                return
+            Virtual_users(email=email,password = password, domain_id = did)
+            commit()
+            self.parentApp.switchFormPrevious()
     def h_key_handle(self, *args, **keywords):
-        self.parentApp.setNextForm('DOMAINSELECT')
-        self.editing = False
+        self.parentApp.switchForm('DOMAINSELECT')
+
 
 class addDomainPopup(npyscreen.ActionPopup):
     def create(self):
@@ -104,8 +131,9 @@ class emailDomainPopup(emailDomain):
 
     @db_session
     def buttonpress(self):
-        if self.myList.value:
+        if self.myList.value != None:
             self.parentApp.getForm("USERFORM").myDomain.value=self.myList.values[self.myList.value].name
+            #import pdb; pdb.set_trace()
         self.parentApp.switchFormPrevious()
 
 class emailUser(CustomWidgets.goodForm):
