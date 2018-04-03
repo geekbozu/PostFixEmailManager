@@ -48,21 +48,15 @@ class DomainList(npyscreen.MultiLineAction):
         self.parent.parentApp.switchForm('ADDDOMAIN')
         pass
 
-    @db_session
     def when_delete_record(self, *args, **keywords):
         if npyscreen.notify_yes_no("Do you want to delete [%s]" %
                 self.values[self.cursor_line].name, title="Warning!",
                 form_color="DANGER"):
-            Virtual_domains[self.values[self.cursor_line].id].delete()
-            commit()
+            self.parent.parentApp.database.removeDomain(self.values[self.cursor_line].id)
             self.values = self.parent.update_domains()
 
-    @db_session
     def actionHighlighted(self, act_on_this, keypress):
         self.value = self._last_cursor_line
-        #self.set_is_line_important(self._my_widgets[self._last_cursor_line],True)
-        self.update()
-        #import pdb; pdb.set_trace()
 
 
 
@@ -81,9 +75,11 @@ class UserList(npyscreen.MultiLineAction):
         self.parent.parentApp.switchForm('USERFORM')
 
     def when_delete_record(self,*args, **keywords):
-        npyscreen.notify_yes_no("Do you want to delete [%s]" %
+        if npyscreen.notify_yes_no("Do you want to delete [%s]" %
                 self.values[self.cursor_line].email, title="Warning!",
-                form_color="DANGER")
+                form_color="DANGER"):
+            self.parent.parentApp.database.removeUser(email=self.values[self.cursor_line].email)
+            self.values=self.parent.update_users()
 
     def actionHighlighted(self, act_on_this, keypress):
         pass

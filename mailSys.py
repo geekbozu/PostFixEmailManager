@@ -34,7 +34,7 @@ class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
        else:
            self.value = None
 
-       self.myLocalPart        = self.add(npyscreen.TitleText, name = u'Local-Part:', value = '')
+       self.myLocalPart    = self.add(npyscreen.TitleText, name = u'Local-Part:', value = '')
        self.myDomain       = self.add(npyscreen.TitleText, name = 'Domain:', color = 'CAUTIONHL',
                labelColor='CAUTION')
        self.myPassword     = self.add(npyscreen.TitleText, name = 'Password:', value = '')
@@ -51,26 +51,16 @@ class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
         self.myPassword.value  = None
 	self.parentApp.setNextFormPrevious()
 
-    @db_session
     def on_ok(self):
         if (self.myLocalPart.value != None) and (self.myDomain.value != None) and (self.myPassword.value != None):
             email = self.myLocalPart.value + '@' + self.myDomain.value
-            password = self.myPassword.value #need to salt+hash this
-            sha = hashlib.sha512()
-            sha.update(password)
-            salt = base64.b64encode(os.urandom(12))
-            sha.update('$6$')
-            sha.update(salt)
-            #salt = base64.b64encode(salt)
-            password = base64.b64encode(sha.digest())
-            password = '$6${}${}'.format(salt,password)
-            try:
-                did = Virtual_domains.get(name=self.myDomain.value).id
-            except:
+            password = self.parentApp.database.genPassword(self.myPassword.value)
+
+            did = self.parentApp.database.getDomainId(name = self.myDomain.value)
+            if not did:
                 npyscreen.notify_wait("Invalid Domain","ERROR")
                 return
-            Virtual_users(email=email,password = password, domain_id = did)
-            commit()
+            self.parentApp.database.saveUser(email=email,password=password,domain_id=did)
             self.parentApp.switchFormPrevious()
     def h_key_handle(self, *args, **keywords):
         self.parentApp.switchForm('DOMAINSELECT')
@@ -80,12 +70,12 @@ class addDomainPopup(npyscreen.ActionPopup):
     def create(self):
         self.myDomain = self.add(npyscreen.TitleText,name="New Domain")
 
-    @db_session
     def on_ok(self):
         if self.myDomain.value != '':
-             Virtual_domains(name=self.myDomain.value)
+             self.parentApp.database.addDomain(domain=self.myDomain.value)
              commit()
         self.parentApp.setNextFormPrevious()
+
     def on_cancel(self):
         self.myDomain.value = ''
         self.parentApp.setNextFormPrevious()
@@ -105,9 +95,8 @@ class emailDomain(CustomWidgets.goodForm):
     def beforeEditing(self):
         self.myList.values = self.update_domains()
 
-    @db_session
     def update_domains(self):
-        return select(e for e in Virtual_domains)[:]
+        return self.parentApp.database.getDomains()
 
     def create(self):
         self.info = u" ^A: Add ── ^D: Delete "
@@ -125,11 +114,9 @@ class emailDomainPopup(emailDomain):
     def beforeEditing(self):
         self.myList.values = self.update_domains()
 
-    @db_session
     def update_domains(self):
-        return select(e for e in Virtual_domains)[:]
+        return self.parentApp.database.getDomains()
 
-    @db_session
     def buttonpress(self):
         if self.myList.value != None:
             self.parentApp.getForm("USERFORM").myDomain.value=self.myList.values[self.myList.value].name
@@ -137,14 +124,15 @@ class emailDomainPopup(emailDomain):
         self.parentApp.switchFormPrevious()
 
 class emailUser(CustomWidgets.goodForm):
-    @db_session
     def beforeEditing(self):
-        self.myList.values = select(e for e in Virtual_users)[:]
+        self.myList.values = self.update_users()
 
     def afterEditing(self):
         #self.parentApp.setNextFormPrevious()
         pass
 
+    def update_users(self):
+        return self.parentApp.database.getUsers()
     def create(self):
         self.info = u" ^A: Add ── ^D: Delete "
         self.myList = self.add(CustomWidgets.UserList, scroll_edit = True)
@@ -152,9 +140,7 @@ class emailUser(CustomWidgets.goodForm):
 
 class EmailManager(npyscreen.NPSAppManaged):
    def onStart(self):
-       self.database = db
-       self.database.bind(provider='mysql', host='localhost', user='rodger',passwd='changeme', db='rodger')
-       self.database.generate_mapping()
+       self.database = userConfig()
        self.addForm('MAIN', emailMain, name='Email Manager')
        self.addForm('DOMAIN', emailDomain, name='Domain Manager')
        self.addForm('ADDDOMAIN', addDomainPopup, name='Add Domain')
