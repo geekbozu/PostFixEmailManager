@@ -20,48 +20,113 @@ class emailMain(npyscreen.FormBaseNew):
                 values = ['Manage Domains', 'Manage Users', 'Quit'],
                 relx = 6)
 
+class emailUser(CustomWidgets.goodForm):
+    def beforeEditing(self):
+        self.myList.values = self.update_users()
+
+    def afterEditing(self):
+        #self.parentApp.setNextFormPrevious()
+        pass
+
+    def update_users(self):
+        return self.parentApp.database.getUsers()
+
+    def create(self):
+        self.info = u" ^A: Add ── ^D: Delete "
+        self.myList = self.add(CustomWidgets.UserList, scroll_edit = True)
+        self.add_handlers({
+           "^A": self.when_add_record,
+           "^D": self.when_delete_record})
+        super(emailUser,self).create()
+
+    def when_add_record(self, *args, **keywords):
+        self.parentApp.switchForm('USERFORM')
+
+    def when_delete_record(self,*args, **keywords):
+        if npyscreen.notify_yes_no("Do you want to delete [%s]" %
+                self.myList.values[self.myList.cursor_line].email, title="Warning!",
+                form_color="DANGER"):
+            self.parentApp.database.removeUser(email=self.myList.values[self.myList.cursor_line].email)
+            self.myList.values=self.update_users()
+
+
 class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
     user = None
+    oldHash = None
+    changed = False
     def afterEditing(self):
         pass
         #self.parentApp.setNextFormPrevious()
+    def beforeEditing(self):
+       if self.changed:
+           return
+       if self.user is not None:
+            self.myLocalPart.value, self.myDomain.value = self.user.email.split('@')
+            self.oldHash = self.user.password
+            self.changed = True
+       else:
+            self.value = None
+            self.oldHash = None
+            self.myLocalPart.value = None
+            self.myDomain.value = None
+            self.myPassword.value = None
+
 
     def create(self):
        self.info = u''
-       if self.__class__.user:
-           pass
-           #sql shennangins here
-       else:
-           self.value = None
-
-       self.myLocalPart    = self.add(npyscreen.TitleText, name = u'Local-Part:', value = '')
+       self.myLocalPart    = self.add(npyscreen.TitleText, name = u'Local-Part:')
        self.myDomain       = self.add(npyscreen.TitleText, name = 'Domain:', color = 'CAUTIONHL',
                labelColor='CAUTION')
-       self.myPassword     = self.add(npyscreen.TitleText, name = 'Password:', value = '')
+       self.myPassword     = self.add(npyscreen.TitleText, name = 'Password:', value = None)
        self.myDomain.add_handlers({
            curses.ascii.NL: self.h_key_handle,
            " ":             self.h_key_handle})
        self.myEmail        = self.add(npyscreen.TitleMultiLine,
-               scroll_exit = True, max_height=3, name='Configure:',
-               values = self.value, rely=6)
+               scroll_exit = True, max_height=3, name='Configure:', rely=6)
 
     def on_cancel(self):
         self.myLocalPart.value = None
         self.myDomain.value = None
         self.myPassword.value  = None
+        self.oldHash = None
+        self.user = None
 	self.parentApp.setNextFormPrevious()
 
     def on_ok(self):
-        if (self.myLocalPart.value != None) and (self.myDomain.value != None) and (self.myPassword.value != None):
+        if (self.myLocalPart.value != None and
+            self.myDomain.value != None and
+            self.myPassword.value != None):
+            #Define Email
             email = self.myLocalPart.value + '@' + self.myDomain.value
-            password = self.parentApp.database.genPassword(self.myPassword.value)
 
-            did = self.parentApp.database.getDomainId(name = self.myDomain.value)
-            if not did:
-                npyscreen.notify_wait("Invalid Domain","ERROR")
+            #Define Password
+            if self.myPassword.value != None:
+                password = self.parentApp.database.genPassword(self.myPassword.value)
+            else:
+                password = self.oldHash
+
+            if password == None:
+                npyscreen.notify_wait("Password Required!", "Super Witty Title")
                 return
-            self.parentApp.database.saveUser(email=email,password=password,domain_id=did)
+
+            #Define Domain_id
+            if not self.parentApp.database.getDomainByName(domain = self.myDomain.value):
+                npyscreen.notify_wait("Invalid Domain: {}".format(self.myDomain.value),"ERROR")
+                return
+
+            if self.parentApp.database.getUser(email):
+                if npyscreen.notify_yes_no("Do you want to overwrite {}?".format(email), title= "Warning",
+                        form_color="DANGER") == False:
+                    return
+
+            if self.parentApp.database.saveUser(email = email, password = password,
+                    domain = self.myDomain.value):
+                npyscreen.notify_wait("User Saved!", "WITTY TITLE", form_color = "WARNING")
+            else:
+                npyscreen.notify_wait("Failed to save user!", "IDK WHY YOU CAN SEE THIS",
+                        form_color="WARNING")
             self.parentApp.switchFormPrevious()
+
     def h_key_handle(self, *args, **keywords):
         self.parentApp.switchForm('DOMAINSELECT')
 
@@ -122,21 +187,6 @@ class emailDomainPopup(emailDomain):
             self.parentApp.getForm("USERFORM").myDomain.value=self.myList.values[self.myList.value].name
             #import pdb; pdb.set_trace()
         self.parentApp.switchFormPrevious()
-
-class emailUser(CustomWidgets.goodForm):
-    def beforeEditing(self):
-        self.myList.values = self.update_users()
-
-    def afterEditing(self):
-        #self.parentApp.setNextFormPrevious()
-        pass
-
-    def update_users(self):
-        return self.parentApp.database.getUsers()
-    def create(self):
-        self.info = u" ^A: Add ── ^D: Delete "
-        self.myList = self.add(CustomWidgets.UserList, scroll_edit = True)
-        super(emailUser,self).create()
 
 class EmailManager(npyscreen.NPSAppManaged):
    def onStart(self):

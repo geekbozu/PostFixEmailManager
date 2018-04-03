@@ -24,17 +24,35 @@ class userConfig(object):
         return  '$6${}${}'.format(salt,password)
 
     @db_session
-    def saveUser(self,email,password,domain_id):
-        Virtual_users(email = email,password = password, domain_id = domain_id)
+    def saveUser(self,email = None,password = None, domain = None):
+        new = self.getUser(email)
+        try:
+            domain_id = self.getDomainByName(domain = domain)
+            if new:
+                new.set(email = email,password = password, domain_id = domain_id)
+            else:
+                Virtual_users(email = email,password = password, domain_id = domain_id)
+            return True
+        except:
+            return False
+
 
     @db_session
-    def removeUser(self,id=None,email=None):
-        if id:
-            Virtual_users.get(id=id).delete()
-        elif email:
-            Virtual_users.get(email=email).delete()
-        else:
-            return 0
+    def removeUser(self,id=None):
+        Virtual_users.get(id=id).delete()
+
+    @db_session
+    def getUser(self,email=None):
+        try:
+            return Virtual_users.get(email=email)
+        except:
+            return False
+
+
+    @db_session
+    def removeUser(self,email=None):
+        Virtual_users.get(email=email).delete()
+
     @db_session
     def addDomain(self,domain = None):
         Virtual_domains(name = domain)
@@ -48,15 +66,26 @@ class userConfig(object):
         return select(e for e in Virtual_domains)[:]
 
     @db_session
-    def getDomainId(self,name = None):
+    def getDomainByName(self,domain = None):
         try:
-            return Virtual_domains.get(name = name).id
+            return Virtual_domains.get(name = domain).id
         except:
-            return 0
+            return False
+
+    @db_session
+    def getDomainById(self,id = None):
+        try:
+            return Virtual_domains.get(id = id).name
+        except:
+            return False
 
     @db_session
     def getUsers(self):
         return select(e for e in Virtual_users)[:]
+
+    @db_session
+    def getAliases(self):
+        return select(e for e in Virtual_aliases)[:]
 
 
 
