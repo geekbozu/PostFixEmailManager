@@ -3,11 +3,12 @@
 import npyscreen
 import CustomWidgets
 from pony.orm import *
+import pony.orm.dbproviders.mysql
 from sql import *
 import curses
 import hashlib
 import base64
-import os
+import os,sys
 import crypt
 class emailMain(npyscreen.FormBaseNew):
     def afterEditing(self):
@@ -90,6 +91,7 @@ class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
         self.myPassword.value  = None
         self.oldHash = None
         self.user = None
+        self.changed = False
 	self.parentApp.setNextFormPrevious()
 
     def on_ok(self):
@@ -125,6 +127,7 @@ class emailUserForm(CustomWidgets.InfoForm,npyscreen.ActionPopup):
             else:
                 npyscreen.notify_wait("Failed to save user!", "IDK WHY YOU CAN SEE THIS",
                         form_color="WARNING")
+            self.changed = False
             self.parentApp.switchFormPrevious()
 
     def h_key_handle(self, *args, **keywords):
@@ -189,16 +192,23 @@ class emailDomainPopup(emailDomain):
         self.parentApp.switchFormPrevious()
 
 class EmailManager(npyscreen.NPSAppManaged):
-   def onStart(self):
-       self.database = userConfig()
-       self.addForm('MAIN', emailMain, name='Email Manager')
-       self.addForm('DOMAIN', emailDomain, name='Domain Manager')
-       self.addForm('ADDDOMAIN', addDomainPopup, name='Add Domain')
-       self.addForm('DOMAINSELECT', emailDomainPopup, name='Domain List')
-       self.addForm("ALIASES", emailAliasPopup, name='Alias manager')
-       self.addForm("USER", emailUser, name = 'User Manager')
-       self.addForm("USERFORM", emailUserForm, name = 'Edit User')
-       # A real application might define more forms here.......
+    def onStart(self):
+        self.database = userConfig(config)
+        self.addForm('MAIN', emailMain, name='Email Manager')
+        self.addForm('DOMAIN', emailDomain, name='Domain Manager')
+        self.addForm('ADDDOMAIN', addDomainPopup, name='Add Domain')
+        self.addForm('DOMAINSELECT', emailDomainPopup, name='Domain List')
+        self.addForm("ALIASES", emailAliasPopup, name='Alias manager')
+        self.addForm("USER", emailUser, name = 'User Manager')
+        self.addForm("USERFORM", emailUserForm, name = 'Edit User')
+        # A real application might define more forms here.......
 
 if __name__ == '__main__':
-   TestApp = EmailManager().run()
+    try:
+        config = sys.argv[1]
+    except:
+        config = '/usr/local/etc/mailSys/mailSys.conf'
+    if not os.path.isfile(config):
+       print "{} not found!".format(config)
+       sys.exit()
+    TestApp = EmailManager().run()

@@ -4,13 +4,14 @@ from pony.orm import *
 import hashlib
 import base64
 import os
-
+import ConfigParser
 db = Database()
 class userConfig(object):
     '''Define use case specfic stuff here'''
-    def __init__(self):
-        db.bind(provider='mysql', host='localhost',
-                user='rodger', passwd='changeme', db='rodger')
+    def __init__(self, config):
+        conf = self.configParse(config)
+        db.bind(provider = conf['provider'], host = conf['host'],
+                user = conf['user'], passwd = conf['passwd'], db = conf['database'])
         db.generate_mapping(create_tables=True)
         # Maybe init tables here later?
 
@@ -87,7 +88,15 @@ class userConfig(object):
     def getAliases(self):
         return select(e for e in Virtual_aliases)[:]
 
-
+    def configParse(self,config):
+        conf = ConfigParser.ConfigParser()
+        conf.read(os.path.expanduser(config))
+#        database = config.get(mysql,database)
+#        user = config.get(mysql,user)
+#        passwd = config.get(mysql,passwd)
+#        table = config.get(mysql,table)
+#        host = config.get(mysql,host)
+        return dict((j,k) for j,k in conf.items('mysql'))
 
 class Virtual_domains(db.Entity):
    id = PrimaryKey(int, auto=True)
