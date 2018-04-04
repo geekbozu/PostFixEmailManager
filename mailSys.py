@@ -20,6 +20,10 @@ class emailMain(npyscreen.FormBaseNew):
 	self.myActions      = self.add(CustomWidgets.mainMenu, scoll_edit=True, name='Options:',
                 values = ['Manage Domains', 'Manage Users', 'Quit'],
                 relx = 6)
+        configstring = "{}@{} on {}".format(self.parentApp.database.conf['user'],
+                self.parentApp.database.conf['database'], self.parentApp.database.conf['host'])
+        self.myConfiguration = self.add(npyscreen.Textfield, value = configstring , name = 'config',
+                rely = -3 ,relx = -4-len(configstring), color='STANDOUT')
 
 class emailUser(CustomWidgets.goodForm):
     def beforeEditing(self):

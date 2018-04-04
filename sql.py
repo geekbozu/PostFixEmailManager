@@ -7,11 +7,12 @@ import os
 import ConfigParser
 db = Database()
 class userConfig(object):
+    conf = None
     '''Define use case specfic stuff here'''
     def __init__(self, config):
-        conf = self.configParse(config)
-        db.bind(provider = conf['provider'], host = conf['host'],
-                user = conf['user'], passwd = conf['passwd'], db = conf['database'])
+        self.conf = self.configParse(config)
+        db.bind(provider = self.conf['provider'], host = self.conf['host'],
+                user = self.conf['user'], passwd = self.conf['passwd'], db = self.conf['database'])
         db.generate_mapping(create_tables=True)
         # Maybe init tables here later?
 
